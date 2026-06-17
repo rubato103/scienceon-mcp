@@ -65,19 +65,21 @@ def cmd_collect(args) -> int:
     from .exporters import export
     with open(args.config, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    terms = cfg.get("terms") or ([cfg["query"]] if cfg.get("query") else [])
-    if not terms:
-        print("오류: config 에 query 또는 terms 가 필요합니다.")
-        return 1
     year = str(cfg["year"]) if cfg.get("year") else None
     sort = cfg.get("sort") or {}
+    common = dict(year=year, max_records=int(cfg.get("max_records", 2000)),
+                  rows=int(cfg.get("rows_per_page", 100)), sort_field=sort.get("field", ""))
     client = ScienceOnClient(throttle=float(cfg.get("throttle_sec", 0.5)))
     try:
-        recs = client.search_terms(
-            cfg["target"], terms, field=cfg.get("field", "BI"), year=year,
-            max_records=int(cfg.get("max_records", 2000)),
-            rows=int(cfg.get("rows_per_page", 100)),
-            sort_field=sort.get("field", ""), contains=cfg.get("contains"))
+        if cfg.get("searches"):  # 다중 그룹(필드별 용어묶음 + 그룹별 contains)
+            recs = client.search_groups(cfg["target"], cfg["searches"], **common)
+        else:
+            terms = cfg.get("terms") or ([cfg["query"]] if cfg.get("query") else [])
+            if not terms:
+                print("오류: config 에 searches / terms / query 중 하나가 필요합니다.")
+                return 1
+            recs = client.search_terms(cfg["target"], terms, field=cfg.get("field", "BI"),
+                                       contains=cfg.get("contains"), **common)
     except ScienceOnError as e:
         print("오류:", e)
         return 1
@@ -85,8 +87,7 @@ def cmd_collect(args) -> int:
     project = cfg.get("project", "collect")
     paths = export(recs, out.get("formats", ["xlsx", "csv", "json"]),
                    out.get("dir", f"output/{project}"), project)
-    print(f"수집 {len(recs)}건 (용어 {len(terms)}개 합집합" +
-          (f", '{','.join(cfg['contains'])}' 필터 적용" if cfg.get("contains") else "") + ") 저장:")
+    print(f"수집 {len(recs)}건 저장:")
     for p in paths:
         print("  -", p)
     return 0

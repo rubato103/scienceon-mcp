@@ -1,33 +1,37 @@
 # ScienceOn 수집 설정 템플릿 — 프로젝트별로 복제해 사용
 #   uv run scienceon collect --config config/<프로젝트명>.yaml
 
-project: borderline           # 출력 파일/폴더 이름
+project: borderline
 target: ARTI                  # ARTI(논문) | REPORT(보고서) | ATT(동향) | RESEARCHER | ORGAN
-field: BI                     # 검색필드: BI(전체) TI(제목) AB(초록) AU(저자) KW(키워드)
-
-# 검색어: 다중(서버측 OR 합집합)은 terms, 단일은 query
-terms:                        # 여러 용어 → 파이프(|) OR 로 합집합·CN 중복제거
-  - 경계선지능
-  - 경계선 지능
-  - 경계선지적기능
-  - 경계선급 지능
-# query: "경계선지능"          # (terms 미사용 시) 단일 검색어
-
 year: "2005~2025"             # 발행연도/범위(틸드 ~). 비우면 전체
 
-# 후처리 필터(선택): 제목·초록·키워드에 아래 문자열이 포함된 레코드만 남김
-# (형태소 토큰화로 직접 검색이 안 되는 '느린학습자' 등을 솎아낼 때)
-# contains:
-#   - 느린학습자
-#   - 느린 학습자
+# ── 검색 방식 3가지 (택1) ─────────────────────────────────────────
+# (1) 단일:        query: "경계선지능"  + field: BI
+# (2) 다중 용어:   terms: [경계선지능, 경계선지적기능]  + field: BI  (+ contains)
+# (3) 다중 그룹(권장): 아래 searches — 그룹마다 다른 field·contains 적용 후 CN 합집합
+#
+# API 검색 팁(실측):
+#  · 형태소 토큰화로 복합어 과대매칭. 변별력 있는 단어는 그대로(BI 경계선지능≈314).
+#  · 색인 안 되는 토큰('느린')은 와일드카드 `*`: TI "느린*"=205(정밀).
+#  · OR 는 `|`. ""(구문)·공백(AND)은 API에서 무시(웹 UI 전용).
+#  · contains: 검색 후 제목·초록·키워드 substring 필터(노이즈 제거).
 
-max_records: 2000             # 합집합 최대 수집 건수
-rows_per_page: 100            # 페이지당 요청 건수
-throttle_sec: 0.5             # 호출 간 지연(초)
+searches:
+  # 경계선지능 계열 (BI, 필터 없음)
+  - field: BI
+    terms: ["경계선지능", "경계선 지능", "경계선지적기능", "경계선급 지능"]
+  # 느린학습자 (와일드카드 + contains 로 '학습자' 노이즈 제거)
+  - field: TI
+    terms: ["느린*", "느리*"]
+    contains: ["느린학습자", "느린 학습자", "느린학습", "느리게 배우"]
+  - field: BI
+    terms: ["느린학습*"]
+    contains: ["느린학습자", "느린 학습자", "느린학습"]
 
-sort:
-  field: ""                   # 예: pubyear(발행일)
-  order: DESC
+max_records: 3000
+rows_per_page: 100
+throttle_sec: 0.5
+sort: { field: "", order: DESC }    # 예: pubyear
 
 output:
   formats: [xlsx, csv, json, sqlite]

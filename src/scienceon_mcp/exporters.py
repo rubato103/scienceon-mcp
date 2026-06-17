@@ -42,7 +42,8 @@ def to_sqlite(records: Sequence[Record], path: str, *, table: str = "records") -
     con = sqlite3.connect(path)
     try:
         cols = ", ".join(f'"{c}" TEXT' for c in COLUMNS)
-        con.execute(f'CREATE TABLE IF NOT EXISTS {table} ({cols}, "raw" TEXT)')
+        con.execute(f"DROP TABLE IF EXISTS {table}")  # 스냅샷: 재실행 시 누적 방지
+        con.execute(f'CREATE TABLE {table} ({cols}, "raw" TEXT)')
         ph = ", ".join(["?"] * (len(COLUMNS) + 1))
         for r in records:
             row = r.to_row()

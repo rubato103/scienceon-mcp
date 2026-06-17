@@ -152,6 +152,30 @@ class ScienceOnClient:
             out = [r for r in out if _hit(r)]
         return out
 
+    def search_groups(self, target: str, groups, *, year: str | None = None,
+                      max_records: int = 3000, rows: int = 100, sort_field: str = "") -> list[Record]:
+        """여러 검색 그룹을 합집합(CN 중복제거).
+
+        각 group = {field, terms:[...], contains:[...]} — 그룹별로 다른 필드·후처리 필터 적용.
+        예) 경계선지능(BI, 필터 없음) + 느린*(TI, contains=느린학습자) 를 한 코퍼스로.
+        """
+        out: list[Record] = []
+        seen: set = set()
+        for g in groups or []:
+            terms = g.get("terms") or ([g["term"]] if g.get("term") else [])
+            recs = self.search_terms(target, terms, field=g.get("field", "BI"), year=year,
+                                     max_records=max_records, rows=rows, sort_field=sort_field,
+                                     contains=g.get("contains"))
+            for r in recs:
+                key = r.control_no or (r.title, r.pub_year)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(r)
+            if len(out) >= max_records:
+                break
+        return out[:max_records]
+
     def detail(self, target: str, cn: str) -> Record | None:
         text = self._call({"action": "browse", "target": target, "cn": cn})
         _, raws = parse_response(text)
