@@ -1,0 +1,27 @@
+# 자격증명 — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+.token_cache.json
+*.token
+
+# 수집 결과
+output/
+*.sqlite
+*.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# 도구 산출물
+.playwright-mcp/
+
+# KISTI 공식 매뉴얼·샘플코드(저작권) — 공개 저장소에 포함하지 않음
+reference/
