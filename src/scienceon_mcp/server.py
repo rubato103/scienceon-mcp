@@ -80,8 +80,12 @@ def scienceon_detail(control_no: str, target: str = "ARTI") -> dict:
 def scienceon_export(query: str, target: str = "ARTI", field: str = "BI",
                      year_from: int | None = None, year_to: int | None = None,
                      formats: list[str] | None = None, max_records: int = 200,
-                     out_dir: str = "output", name: str | None = None) -> dict:
-    """검색 결과를 대량 수집해 파일로 저장(xlsx/csv/json/sqlite). 저장 경로 반환."""
+                     out_dir: str | None = None, name: str | None = None) -> dict:
+    """검색 결과를 대량 수집해 파일로 저장(xlsx/csv/json/sqlite). 저장 경로 반환.
+
+    out_dir 미지정 시 사용자 홈의 `scienceon-output/` 에 저장한다(MCP는 임의 cwd에서 기동되므로).
+    """
+    from pathlib import Path
     from .exporters import export
     try:
         recs = _client().search(target, _build_query(query, field, year_from, year_to),
@@ -90,7 +94,8 @@ def scienceon_export(query: str, target: str = "ARTI", field: str = "BI",
         return {"error": str(e)}
     fmts = formats or ["xlsx", "csv", "json"]
     nm = (name or f"{target}_{query}").replace(" ", "_")[:60]
-    paths = export(recs, fmts, out_dir, nm)
+    base = out_dir or str(Path.home() / "scienceon-output")
+    paths = export(recs, fmts, base, nm)
     return {"count": len(recs), "files": paths}
 
 

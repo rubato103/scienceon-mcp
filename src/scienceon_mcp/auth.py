@@ -24,7 +24,8 @@ from Crypto.Util.Padding import pad
 from .config import TOKEN_URL, Credentials
 
 _IV = b"jvHJ1EFA0IXBrxxz"  # 공식 샘플 고정 IV (16바이트)
-_CACHE = Path(".token_cache.json")
+# 실행 cwd 와 무관하게 토큰을 재사용하도록 홈 디렉토리에 캐시 (MCP는 임의 cwd에서 기동)
+_CACHE = Path.home() / ".scienceon_token_cache.json"
 
 
 def encrypt_accounts(auth_key: str, mac_address: str) -> str:
