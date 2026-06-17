@@ -2,9 +2,13 @@
 
 Claude 등 MCP 클라이언트에 검색/상세/수집 도구를 노출한다.
 자격증명은 MCP 설정의 env 블록 또는 .env 에서 로드한다.
+
+검색필드(field): BI(전체) TI(제목) AB(초록) AU(저자) KW(키워드) PB(발행기관) PY(발행연도)
+다중어는 queries=[...] 로 전달 → 서버측 OR(파이프)로 합집합. contains=[...] 는 후처리 필터.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -13,20 +17,23 @@ from .client import ScienceOnClient, ScienceOnError
 
 mcp = FastMCP("scienceon")
 
-# 검색 필드코드: BI(전체) TI(제목) AB(초록) AU(저자) KW(키워드) PB(발행기관) PY(발행연도)
-
 
 def _client() -> ScienceOnClient:
     return ScienceOnClient()
 
 
-def _build_query(query: str, field: str, year_from: int | None, year_to: int | None) -> dict:
-    q = {field: query}
+def _year_str(year_from: int | None, year_to: int | None) -> str | None:
     if year_from and year_to:
-        q["PY"] = f"{year_from}~{year_to}"
-    elif year_from:
-        q["PY"] = str(year_from)
-    return q
+        return f"{year_from}~{year_to}" if year_from != year_to else str(year_from)
+    if year_from:
+        return str(year_from)
+    return None
+
+
+def _terms(query: str | None, queries: list[str] | None) -> list[str]:
+    if queries:
+        return [q for q in queries if q and q.strip()]
+    return [query] if query and query.strip() else []
 
 
 @mcp.tool()
@@ -49,20 +56,27 @@ def scienceon_status() -> dict:
 
 
 @mcp.tool()
-def scienceon_search(query: str, target: str = "ARTI", field: str = "BI",
+def scienceon_search(query: str | None = None, queries: list[str] | None = None,
+                     target: str = "ARTI", field: str = "BI",
                      year_from: int | None = None, year_to: int | None = None,
-                     rows: int = 20) -> dict:
+                     rows: int = 20, contains: list[str] | None = None) -> dict:
     """ScienceOn 문헌 검색.
 
-    query: 검색어 / target: ARTI(논문)·REPORT(보고서)·ATT(동향)·RESEARCHER·ORGAN
-    field: 검색필드 BI(전체)·TI(제목)·AB(초록)·AU(저자)·KW(키워드)
-    year_from~year_to: 발행연도 범위. rows: 반환 건수(최대 100).
+    query: 단일 검색어 / queries: 여러 검색어(서버측 OR 합집합) — 둘 중 하나
+    target: ARTI(논문)·REPORT(보고서)·ATT(동향)·RESEARCHER·ORGAN
+    field: BI(전체)·TI(제목)·AB(초록)·AU(저자)·KW(키워드)
+    year_from~year_to: 발행연도(범위는 PY 틸드). rows: 반환 건수(최대 100).
+    contains: 제목·초록·키워드에 이 문자열(들)이 포함된 결과만(후처리 필터).
     """
+    terms = _terms(query, queries)
+    if not terms:
+        return {"error": "query 또는 queries 중 하나는 필요합니다."}
     try:
-        recs = _client().search(target, _build_query(query, field, year_from, year_to),
-                                 max_records=min(rows, 100), rows=min(rows, 100))
+        recs = _client().search_terms(target, terms, field=field, year=_year_str(year_from, year_to),
+                                      max_records=min(rows, 100), rows=min(rows, 100), contains=contains)
     except ScienceOnError as e:
         return {"error": str(e)}
+    recs = recs[:rows]
     return {"count": len(recs), "records": [r.to_row() for r in recs]}
 
 
@@ -77,23 +91,28 @@ def scienceon_detail(control_no: str, target: str = "ARTI") -> dict:
 
 
 @mcp.tool()
-def scienceon_export(query: str, target: str = "ARTI", field: str = "BI",
+def scienceon_export(query: str | None = None, queries: list[str] | None = None,
+                     target: str = "ARTI", field: str = "BI",
                      year_from: int | None = None, year_to: int | None = None,
-                     formats: list[str] | None = None, max_records: int = 200,
+                     contains: list[str] | None = None,
+                     formats: list[str] | None = None, max_records: int = 500,
                      out_dir: str | None = None, name: str | None = None) -> dict:
     """검색 결과를 대량 수집해 파일로 저장(xlsx/csv/json/sqlite). 저장 경로 반환.
 
-    out_dir 미지정 시 사용자 홈의 `scienceon-output/` 에 저장한다(MCP는 임의 cwd에서 기동되므로).
+    queries=[...] 로 여러 용어를 서버측 OR 합집합(중복제거). contains=[...] 후처리 필터.
+    out_dir 미지정 시 사용자 홈의 `scienceon-output/` 에 저장(MCP는 임의 cwd에서 기동).
     """
-    from pathlib import Path
     from .exporters import export
+    terms = _terms(query, queries)
+    if not terms:
+        return {"error": "query 또는 queries 중 하나는 필요합니다."}
     try:
-        recs = _client().search(target, _build_query(query, field, year_from, year_to),
-                                 max_records=max_records, rows=100)
+        recs = _client().search_terms(target, terms, field=field, year=_year_str(year_from, year_to),
+                                      max_records=max_records, rows=100, contains=contains)
     except ScienceOnError as e:
         return {"error": str(e)}
     fmts = formats or ["xlsx", "csv", "json"]
-    nm = (name or f"{target}_{query}").replace(" ", "_")[:60]
+    nm = (name or f"{target}_{terms[0]}").replace(" ", "_")[:60]
     base = out_dir or str(Path.home() / "scienceon-output")
     paths = export(recs, fmts, base, nm)
     return {"count": len(recs), "files": paths}

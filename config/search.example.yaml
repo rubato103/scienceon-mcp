@@ -1,21 +1,34 @@
 # ScienceOn 수집 설정 템플릿 — 프로젝트별로 복제해 사용
-#   사용: scienceon collect --config config/<프로젝트명>.yaml
-#   (또는) uv run scienceon collect --config config/<프로젝트명>.yaml
+#   uv run scienceon collect --config config/<프로젝트명>.yaml
 
-project: demo                 # 출력 파일/폴더 이름에 사용
+project: borderline           # 출력 파일/폴더 이름
 target: ARTI                  # ARTI(논문) | REPORT(보고서) | ATT(동향) | RESEARCHER | ORGAN
 field: BI                     # 검색필드: BI(전체) TI(제목) AB(초록) AU(저자) KW(키워드)
-query: "인공지능"              # 검색어
-year: "2015~2024"             # 발행연도 또는 범위(예: 2020 / 2015~2024). 비우면 전체
 
-max_records: 300              # 최대 수집 건수
+# 검색어: 다중(서버측 OR 합집합)은 terms, 단일은 query
+terms:                        # 여러 용어 → 파이프(|) OR 로 합집합·CN 중복제거
+  - 경계선지능
+  - 경계선 지능
+  - 경계선지적기능
+  - 경계선급 지능
+# query: "경계선지능"          # (terms 미사용 시) 단일 검색어
+
+year: "2005~2025"             # 발행연도/범위(틸드 ~). 비우면 전체
+
+# 후처리 필터(선택): 제목·초록·키워드에 아래 문자열이 포함된 레코드만 남김
+# (형태소 토큰화로 직접 검색이 안 되는 '느린학습자' 등을 솎아낼 때)
+# contains:
+#   - 느린학습자
+#   - 느린 학습자
+
+max_records: 2000             # 합집합 최대 수집 건수
 rows_per_page: 100            # 페이지당 요청 건수
-throttle_sec: 0.4             # 호출 간 지연(초) — 정중한 호출
+throttle_sec: 0.5             # 호출 간 지연(초)
 
-sort:                         # 정렬(선택). 비우면 기본 정렬
-  field: ""                   #   예: PY
+sort:
+  field: ""                   # 예: pubyear(발행일)
   order: DESC
 
 output:
-  formats: [xlsx, csv, json, sqlite]   # 원하는 형식만 남겨도 됨
-  dir: "output/demo"          # 저장 폴더
+  formats: [xlsx, csv, json, sqlite]
+  dir: "output/borderline"

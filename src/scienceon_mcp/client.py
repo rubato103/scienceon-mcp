@@ -115,6 +115,43 @@ class ScienceOnClient:
             time.sleep(self.throttle)
         return out[:max_records]
 
+    def search_terms(self, target: str, terms, *, field: str = "BI", year: str | None = None,
+                     max_records: int = 3000, rows: int = 100, sort_field: str = "",
+                     include: str = "", contains=None) -> list[Record]:
+        """여러 검색어를 **각각 개별 검색**해 CN 기준 합집합(중복제거).
+
+        (서버측 파이프 OR 은 공백 포함 용어에서 토큰이 분리돼 과대매칭되므로 사용하지 않는다.)
+        contains 지정 시 제목·초록·키워드에 해당 문자열(들)이 포함된 레코드만 남긴다
+        (후처리 필터 — 예: 토큰화로 직접 검색이 안 되는 '느린학습자' 태깅).
+        """
+        terms = [t.strip() for t in (terms or []) if t and t.strip()]
+        out: list[Record] = []
+        seen: set = set()
+        for term in terms:
+            q = {field: term}
+            if year:
+                q["PY"] = year
+            for r in self.search(target, q, max_records=max_records, rows=rows,
+                                 sort_field=sort_field, include=include):
+                key = r.control_no or (r.title, r.pub_year)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(r)
+            if len(out) >= max_records:
+                break
+        out = out[:max_records]
+        if contains:
+            subs = [contains] if isinstance(contains, str) else list(contains)
+
+            def _hit(r: Record) -> bool:
+                kw = "; ".join(r.keywords) if isinstance(r.keywords, list) else (r.keywords or "")
+                hay = f"{r.title}\n{r.abstract}\n{kw}"
+                return any(s in hay for s in subs)
+
+            out = [r for r in out if _hit(r)]
+        return out
+
     def detail(self, target: str, cn: str) -> Record | None:
         text = self._call({"action": "browse", "target": target, "cn": cn})
         _, raws = parse_response(text)

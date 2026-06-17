@@ -2,7 +2,7 @@
 
 예:
   scienceon status
-  scienceon search --target ARTI --query 인공지능 --field BI --year 2015~2024 --rows 50
+  scienceon search --query 경계선지능 --query 느린학습자 --target ARTI --year 2015~2024 --rows 50
   scienceon detail --target ARTI --cn JAKO202109950460817
   scienceon collect --config config/search.example.yaml
 """
@@ -12,13 +12,6 @@ import argparse
 import sys
 
 from .client import ScienceOnClient, ScienceOnError
-
-
-def _query_dict(args) -> dict:
-    q = {args.field: args.query}
-    if getattr(args, "year", None):
-        q["PY"] = args.year
-    return q
 
 
 def cmd_status(args) -> int:
@@ -41,14 +34,15 @@ def cmd_status(args) -> int:
 
 def cmd_search(args) -> int:
     try:
-        recs = ScienceOnClient().search(args.target, _query_dict(args),
-                                        max_records=args.rows, rows=min(args.rows, 100))
+        recs = ScienceOnClient().search_terms(
+            args.target, args.query, field=args.field, year=args.year,
+            max_records=max(args.rows, 100), rows=min(args.rows, 100), contains=args.contains)
     except ScienceOnError as e:
         print("오류:", e)
         return 1
-    for r in recs:
+    for r in recs[:args.rows]:
         print(f"[{r.pub_year}] {r.title}  / {'; '.join(r.authors)}  ({r.control_no})")
-    print(f"\n총 {len(recs)}건")
+    print(f"\n표시 {min(len(recs), args.rows)}건 / 합집합 {len(recs)}건")
     return 0
 
 
@@ -71,16 +65,19 @@ def cmd_collect(args) -> int:
     from .exporters import export
     with open(args.config, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    query = {cfg.get("field", "BI"): cfg["query"]}
-    if cfg.get("year"):
-        query["PY"] = str(cfg["year"])
+    terms = cfg.get("terms") or ([cfg["query"]] if cfg.get("query") else [])
+    if not terms:
+        print("오류: config 에 query 또는 terms 가 필요합니다.")
+        return 1
+    year = str(cfg["year"]) if cfg.get("year") else None
     sort = cfg.get("sort") or {}
-    client = ScienceOnClient(throttle=float(cfg.get("throttle_sec", 0.4)))
+    client = ScienceOnClient(throttle=float(cfg.get("throttle_sec", 0.5)))
     try:
-        recs = client.search(cfg["target"], query,
-                             max_records=int(cfg.get("max_records", 200)),
-                             rows=int(cfg.get("rows_per_page", 100)),
-                             sort_field=sort.get("field", ""))
+        recs = client.search_terms(
+            cfg["target"], terms, field=cfg.get("field", "BI"), year=year,
+            max_records=int(cfg.get("max_records", 2000)),
+            rows=int(cfg.get("rows_per_page", 100)),
+            sort_field=sort.get("field", ""), contains=cfg.get("contains"))
     except ScienceOnError as e:
         print("오류:", e)
         return 1
@@ -88,7 +85,8 @@ def cmd_collect(args) -> int:
     project = cfg.get("project", "collect")
     paths = export(recs, out.get("formats", ["xlsx", "csv", "json"]),
                    out.get("dir", f"output/{project}"), project)
-    print(f"수집 {len(recs)}건 저장:")
+    print(f"수집 {len(recs)}건 (용어 {len(terms)}개 합집합" +
+          (f", '{','.join(cfg['contains'])}' 필터 적용" if cfg.get("contains") else "") + ") 저장:")
     for p in paths:
         print("  -", p)
     return 0
@@ -100,12 +98,13 @@ def main() -> None:
 
     sub.add_parser("status", help="연결/토큰 상태 점검").set_defaults(func=cmd_status)
 
-    s = sub.add_parser("search", help="검색")
+    s = sub.add_parser("search", help="검색 (여러 --query = 서버측 OR 합집합)")
+    s.add_argument("--query", required=True, action="append", help="검색어(여러 번 지정 가능)")
     s.add_argument("--target", default="ARTI")
-    s.add_argument("--query", required=True)
     s.add_argument("--field", default="BI")
-    s.add_argument("--year", help='발행연도/범위 예: 2020 또는 2015~2024')
+    s.add_argument("--year", help="발행연도/범위 예: 2020 또는 2015~2024")
     s.add_argument("--rows", type=int, default=20)
+    s.add_argument("--contains", action="append", help="제목/초록/키워드 포함 필터(여러 번 가능)")
     s.set_defaults(func=cmd_search)
 
     d = sub.add_parser("detail", help="상세보기(CN)")
@@ -113,7 +112,7 @@ def main() -> None:
     d.add_argument("--cn", required=True)
     d.set_defaults(func=cmd_detail)
 
-    c = sub.add_parser("collect", help="설정 기반 대량 수집")
+    c = sub.add_parser("collect", help="설정 기반 대량 수집 (terms/contains 지원)")
     c.add_argument("--config", required=True)
     c.set_defaults(func=cmd_collect)
 
