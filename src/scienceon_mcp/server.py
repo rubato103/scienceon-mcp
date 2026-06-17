@@ -59,21 +59,24 @@ def scienceon_status() -> dict:
 def scienceon_search(query: str | None = None, queries: list[str] | None = None,
                      target: str = "ARTI", field: str = "BI",
                      year_from: int | None = None, year_to: int | None = None,
-                     rows: int = 20, contains: list[str] | None = None) -> dict:
+                     rows: int = 20, contains: list[str] | None = None,
+                     lang: list[str] | None = None) -> dict:
     """ScienceOn 문헌 검색.
 
-    query: 단일 검색어 / queries: 여러 검색어(서버측 OR 합집합) — 둘 중 하나
+    query: 단일 검색어 / queries: 여러 검색어(개별검색 후 CN 합집합) — 둘 중 하나
     target: ARTI(논문)·REPORT(보고서)·ATT(동향)·RESEARCHER·ORGAN
-    field: BI(전체)·TI(제목)·AB(초록)·AU(저자)·KW(키워드)
+    field: BI(전체)·TI(제목)·AB(초록)·AU(저자)·KW(키워드). 와일드카드 `*` 사용 가능(예: 느린*).
     year_from~year_to: 발행연도(범위는 PY 틸드). rows: 반환 건수(최대 100).
-    contains: 제목·초록·키워드에 이 문자열(들)이 포함된 결과만(후처리 필터).
+    contains: 원본 전체필드에 이 문자열(들) 포함 결과만(대소문자 무시 후처리 필터).
+    lang: 허용 언어(예: ["한국어"]) — 국내(국문) 한정 등.
     """
     terms = _terms(query, queries)
     if not terms:
         return {"error": "query 또는 queries 중 하나는 필요합니다."}
     try:
         recs = _client().search_terms(target, terms, field=field, year=_year_str(year_from, year_to),
-                                      max_records=min(rows, 100), rows=min(rows, 100), contains=contains)
+                                      max_records=min(rows, 100), rows=min(rows, 100),
+                                      contains=contains, lang=lang)
     except ScienceOnError as e:
         return {"error": str(e)}
     recs = recs[:rows]
@@ -94,12 +97,12 @@ def scienceon_detail(control_no: str, target: str = "ARTI") -> dict:
 def scienceon_export(query: str | None = None, queries: list[str] | None = None,
                      target: str = "ARTI", field: str = "BI",
                      year_from: int | None = None, year_to: int | None = None,
-                     contains: list[str] | None = None,
+                     contains: list[str] | None = None, lang: list[str] | None = None,
                      formats: list[str] | None = None, max_records: int = 500,
                      out_dir: str | None = None, name: str | None = None) -> dict:
     """검색 결과를 대량 수집해 파일로 저장(xlsx/csv/json/sqlite). 저장 경로 반환.
 
-    queries=[...] 로 여러 용어를 서버측 OR 합집합(중복제거). contains=[...] 후처리 필터.
+    queries=[...] 여러 용어 개별검색 후 CN 합집합. contains=[...] 후처리 필터, lang=["한국어"] 국내한정.
     out_dir 미지정 시 사용자 홈의 `scienceon-output/` 에 저장(MCP는 임의 cwd에서 기동).
     """
     from .exporters import export
@@ -108,7 +111,7 @@ def scienceon_export(query: str | None = None, queries: list[str] | None = None,
         return {"error": "query 또는 queries 중 하나는 필요합니다."}
     try:
         recs = _client().search_terms(target, terms, field=field, year=_year_str(year_from, year_to),
-                                      max_records=max_records, rows=100, contains=contains)
+                                      max_records=max_records, rows=100, contains=contains, lang=lang)
     except ScienceOnError as e:
         return {"error": str(e)}
     fmts = formats or ["xlsx", "csv", "json"]

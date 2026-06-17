@@ -117,12 +117,13 @@ class ScienceOnClient:
 
     def search_terms(self, target: str, terms, *, field: str = "BI", year: str | None = None,
                      max_records: int = 3000, rows: int = 100, sort_field: str = "",
-                     include: str = "", contains=None) -> list[Record]:
+                     include: str = "", contains=None, lang=None) -> list[Record]:
         """여러 검색어를 **각각 개별 검색**해 CN 기준 합집합(중복제거).
 
         (서버측 파이프 OR 은 공백 포함 용어에서 토큰이 분리돼 과대매칭되므로 사용하지 않는다.)
-        contains 지정 시 제목·초록·키워드에 해당 문자열(들)이 포함된 레코드만 남긴다
-        (후처리 필터 — 예: 토큰화로 직접 검색이 안 되는 '느린학습자' 태깅).
+        contains: 원본 전체 필드(국문/영문 제목·초록·키워드 등)에 해당 문자열(들)이 포함된
+                  레코드만 남김(대소문자 무시). 예: '느린학습자' 또는 'borderline intellectual functioning'.
+        lang: 허용 언어(예: ['한국어']) — raw 의 Lang 으로 국내(국문) 한정 등에 사용.
         """
         terms = [t.strip() for t in (terms or []) if t and t.strip()]
         out: list[Record] = []
@@ -142,14 +143,19 @@ class ScienceOnClient:
                 break
         out = out[:max_records]
         if contains:
-            subs = [contains] if isinstance(contains, str) else list(contains)
+            subs = [s.lower() for s in ([contains] if isinstance(contains, str) else list(contains))]
 
             def _hit(r: Record) -> bool:
-                kw = "; ".join(r.keywords) if isinstance(r.keywords, list) else (r.keywords or "")
-                hay = f"{r.title}\n{r.abstract}\n{kw}"
+                parts = [r.title, r.abstract,
+                         "; ".join(r.keywords) if isinstance(r.keywords, list) else (r.keywords or "")]
+                parts += [v for v in r.raw.values() if isinstance(v, str)]
+                hay = "\n".join(parts).lower()
                 return any(s in hay for s in subs)
 
             out = [r for r in out if _hit(r)]
+        if lang:
+            langs = [lang] if isinstance(lang, str) else list(lang)
+            out = [r for r in out if (r.raw.get("Lang") or "") in langs]
         return out
 
     def search_groups(self, target: str, groups, *, year: str | None = None,
@@ -164,8 +170,8 @@ class ScienceOnClient:
         for g in groups or []:
             terms = g.get("terms") or ([g["term"]] if g.get("term") else [])
             recs = self.search_terms(target, terms, field=g.get("field", "BI"), year=year,
-                                     max_records=max_records, rows=rows, sort_field=sort_field,
-                                     contains=g.get("contains"))
+                                     max_records=int(g.get("max", max_records)), rows=rows,
+                                     sort_field=sort_field, contains=g.get("contains"), lang=g.get("lang"))
             for r in recs:
                 key = r.control_no or (r.title, r.pub_year)
                 if key in seen:

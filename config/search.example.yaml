@@ -27,6 +27,23 @@ searches:
   - field: BI
     terms: ["느린학습*"]
     contains: ["느린학습자", "느린 학습자", "느린학습"]
+  # 영문 동의어 — 국문 논문이 영문 제목/초록/키워드에 쓴 경우. lang 으로 국내(국문) 한정.
+  # 영문어는 해외논문이 많아(수천건) max 로 상위 N건만 보고 contains+lang 으로 거른다(용어별 분리).
+  - field: BI
+    terms: ["borderline intellectual functioning"]
+    contains: ["borderline intellectual functioning"]
+    lang: ["한국어"]
+    max: 300
+  - field: BI
+    terms: ["borderline intelligence"]
+    contains: ["borderline intelligence"]
+    lang: ["한국어"]
+    max: 300
+  - field: BI
+    terms: ["slow learner*"]
+    contains: ["slow learner"]
+    lang: ["한국어"]
+    max: 300
 
 max_records: 3000
 rows_per_page: 100
