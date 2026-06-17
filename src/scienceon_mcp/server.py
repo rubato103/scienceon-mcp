@@ -1,4 +1,4 @@
-"""ScienceON MCP 서버 (FastMCP).
+"""ScienceOn MCP 서버 (FastMCP).
 
 Claude 등 MCP 클라이언트에 검색/상세/수집 도구를 노출한다.
 자격증명은 MCP 설정의 env 블록 또는 .env 에서 로드한다.
@@ -9,21 +9,21 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from .client import ScienceONClient, ScienceONError
+from .client import ScienceOnClient, ScienceOnError
 
 mcp = FastMCP("scienceon")
 
 # 검색 필드코드: BI(전체) TI(제목) AB(초록) AU(저자) KW(키워드) PB(발행기관) PY(발행연도)
 
 
-def _client() -> ScienceONClient:
-    return ScienceONClient()
+def _client() -> ScienceOnClient:
+    return ScienceOnClient()
 
 
 def _build_query(query: str, field: str, year_from: int | None, year_to: int | None) -> dict:
     q = {field: query}
     if year_from and year_to:
-        q["PY"] = f"{year_from}-{year_to}"
+        q["PY"] = f"{year_from}~{year_to}"
     elif year_from:
         q["PY"] = str(year_from)
     return q
@@ -31,7 +31,7 @@ def _build_query(query: str, field: str, year_from: int | None, year_to: int | N
 
 @mcp.tool()
 def scienceon_status() -> dict:
-    """ScienceON 연결/토큰 상태 점검. 실패 시 원인 힌트와 현재 공인 IP 를 반환."""
+    """ScienceOn 연결/토큰 상태 점검. 실패 시 원인 힌트와 현재 공인 IP 를 반환."""
     info: dict[str, Any] = {}
     try:
         import requests
@@ -52,7 +52,7 @@ def scienceon_status() -> dict:
 def scienceon_search(query: str, target: str = "ARTI", field: str = "BI",
                      year_from: int | None = None, year_to: int | None = None,
                      rows: int = 20) -> dict:
-    """ScienceON 문헌 검색.
+    """ScienceOn 문헌 검색.
 
     query: 검색어 / target: ARTI(논문)·REPORT(보고서)·ATT(동향)·RESEARCHER·ORGAN
     field: 검색필드 BI(전체)·TI(제목)·AB(초록)·AU(저자)·KW(키워드)
@@ -61,7 +61,7 @@ def scienceon_search(query: str, target: str = "ARTI", field: str = "BI",
     try:
         recs = _client().search(target, _build_query(query, field, year_from, year_to),
                                  max_records=min(rows, 100), rows=min(rows, 100))
-    except ScienceONError as e:
+    except ScienceOnError as e:
         return {"error": str(e)}
     return {"count": len(recs), "records": [r.to_row() for r in recs]}
 
@@ -71,7 +71,7 @@ def scienceon_detail(control_no: str, target: str = "ARTI") -> dict:
     """제어번호(CN)로 상세 서지·초록 조회."""
     try:
         r = _client().detail(target, control_no)
-    except ScienceONError as e:
+    except ScienceOnError as e:
         return {"error": str(e)}
     return r.to_row() if r else {"error": "결과 없음"}
 
@@ -90,7 +90,7 @@ def scienceon_export(query: str, target: str = "ARTI", field: str = "BI",
     try:
         recs = _client().search(target, _build_query(query, field, year_from, year_to),
                                  max_records=max_records, rows=100)
-    except ScienceONError as e:
+    except ScienceOnError as e:
         return {"error": str(e)}
     fmts = formats or ["xlsx", "csv", "json"]
     nm = (name or f"{target}_{query}").replace(" ", "_")[:60]

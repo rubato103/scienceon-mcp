@@ -1,4 +1,4 @@
-"""ScienceON 응답(XML) → 정규화 레코드.
+"""ScienceOn 응답(XML) → 정규화 레코드.
 
 실제 태그/metaCode 명은 첫 라이브 응답으로 확정한다(docs §7). 그 전까지는
 원본 태그/속성을 그대로 수집하고, FIELD_CANDIDATES 로 정규화 필드에 매핑한다.
@@ -40,11 +40,12 @@ def _find_total(root: ET.Element) -> int:
 
 
 def _iter_record_elems(root: ET.Element):
-    recs = [el for el in root.iter() if _localname(el.tag).lower() in ("record", "item", "doc")]
+    # 결과 레코드는 recordList/record 에만 존재. parameterData 등 다른 곳의 item 을
+    # 레코드로 오인하지 않도록 경로를 한정한다(0건 응답에서 빈 레코드 생성 방지).
+    recs = root.findall(".//recordList/record")
     if recs:
-        # 가장 바깥 레벨의 record 류만 (중첩 방지: 부모가 record류가 아닌 것)
-        return [el for el in recs if el.find("./*") is not None or (el.text and el.text.strip())]
-    return list(root)
+        return recs
+    return [el for el in root.iter() if _localname(el.tag).lower() == "record"]
 
 
 def parse_response(xml_text: str) -> tuple[int, list[dict[str, Any]]]:

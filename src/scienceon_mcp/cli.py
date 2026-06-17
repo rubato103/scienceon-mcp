@@ -1,8 +1,8 @@
-"""ScienceON 수집기 CLI — status / search / detail / collect.
+"""ScienceOn 수집기 CLI — status / search / detail / collect.
 
 예:
   scienceon status
-  scienceon search --target ARTI --query 인공지능 --field BI --year 2015-2024 --rows 50
+  scienceon search --target ARTI --query 인공지능 --field BI --year 2015~2024 --rows 50
   scienceon detail --target ARTI --cn JAKO202109950460817
   scienceon collect --config config/search.example.yaml
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .client import ScienceONClient, ScienceONError
+from .client import ScienceOnClient, ScienceOnError
 
 
 def _query_dict(args) -> dict:
@@ -41,9 +41,9 @@ def cmd_status(args) -> int:
 
 def cmd_search(args) -> int:
     try:
-        recs = ScienceONClient().search(args.target, _query_dict(args),
+        recs = ScienceOnClient().search(args.target, _query_dict(args),
                                         max_records=args.rows, rows=min(args.rows, 100))
-    except ScienceONError as e:
+    except ScienceOnError as e:
         print("오류:", e)
         return 1
     for r in recs:
@@ -54,8 +54,8 @@ def cmd_search(args) -> int:
 
 def cmd_detail(args) -> int:
     try:
-        r = ScienceONClient().detail(args.target, args.cn)
-    except ScienceONError as e:
+        r = ScienceOnClient().detail(args.target, args.cn)
+    except ScienceOnError as e:
         print("오류:", e)
         return 1
     if not r:
@@ -75,13 +75,13 @@ def cmd_collect(args) -> int:
     if cfg.get("year"):
         query["PY"] = str(cfg["year"])
     sort = cfg.get("sort") or {}
-    client = ScienceONClient(throttle=float(cfg.get("throttle_sec", 0.4)))
+    client = ScienceOnClient(throttle=float(cfg.get("throttle_sec", 0.4)))
     try:
         recs = client.search(cfg["target"], query,
                              max_records=int(cfg.get("max_records", 200)),
                              rows=int(cfg.get("rows_per_page", 100)),
                              sort_field=sort.get("field", ""))
-    except ScienceONError as e:
+    except ScienceOnError as e:
         print("오류:", e)
         return 1
     out = cfg.get("output", {})
@@ -95,7 +95,7 @@ def cmd_collect(args) -> int:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(prog="scienceon", description="ScienceON 문헌 메타데이터 수집기")
+    p = argparse.ArgumentParser(prog="scienceon", description="ScienceOn 문헌 메타데이터 수집기")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("status", help="연결/토큰 상태 점검").set_defaults(func=cmd_status)
@@ -104,7 +104,7 @@ def main() -> None:
     s.add_argument("--target", default="ARTI")
     s.add_argument("--query", required=True)
     s.add_argument("--field", default="BI")
-    s.add_argument("--year", help='발행연도/범위 예: 2020 또는 2015-2024')
+    s.add_argument("--year", help='발행연도/범위 예: 2020 또는 2015~2024')
     s.add_argument("--rows", type=int, default=20)
     s.set_defaults(func=cmd_search)
 

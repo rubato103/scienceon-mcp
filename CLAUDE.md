@@ -1,6 +1,6 @@
 # scienceon-mcp — 프로젝트 지침
 
-> KISTI ScienceON OpenAPI 문헌 검색·메타데이터 수집기. 누구나 자기 API 키로 쓰는
+> KISTI ScienceOn OpenAPI 문헌 검색·메타데이터 수집기. 누구나 자기 API 키로 쓰는
 > **공개 MCP 서버 + CLI**. API 호출 규격은 [docs/SCIENCEON_API_GUIDE.md](docs/SCIENCEON_API_GUIDE.md) 참조.
 
 ## 1. 목표

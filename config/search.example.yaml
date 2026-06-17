@@ -1,4 +1,4 @@
-# ScienceON 수집 설정 템플릿 — 프로젝트별로 복제해 사용
+# ScienceOn 수집 설정 템플릿 — 프로젝트별로 복제해 사용
 #   사용: scienceon collect --config config/<프로젝트명>.yaml
 #   (또는) uv run scienceon collect --config config/<프로젝트명>.yaml
 
@@ -6,7 +6,7 @@ project: demo                 # 출력 파일/폴더 이름에 사용
 target: ARTI                  # ARTI(논문) | REPORT(보고서) | ATT(동향) | RESEARCHER | ORGAN
 field: BI                     # 검색필드: BI(전체) TI(제목) AB(초록) AU(저자) KW(키워드)
 query: "인공지능"              # 검색어
-year: "2015-2024"             # 발행연도 또는 범위(예: 2020 / 2015-2024). 비우면 전체
+year: "2015~2024"             # 발행연도 또는 범위(예: 2020 / 2015~2024). 비우면 전체
 
 max_records: 300              # 최대 수집 건수
 rows_per_page: 100            # 페이지당 요청 건수

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "scienceon-mcp"
 version = "0.1.0"
-description = "MCP server + CLI for KISTI ScienceON OpenAPI — search and collect academic literature metadata"
+description = "MCP server + CLI for KISTI ScienceOn OpenAPI — search and collect academic literature metadata"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
