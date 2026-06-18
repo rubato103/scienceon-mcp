@@ -1,0 +1,65 @@
+{
+  "manifest_version": "0.3",
+  "name": "scienceon-mcp",
+  "display_name": "ScienceOn 수집기 (scienceon-mcp)",
+  "version": "0.1.0",
+  "description": "KISTI ScienceOn OpenAPI 문헌 검색·메타데이터 수집기 — 다중쿼리·와일드카드·후처리 필터·xlsx/csv/json/sqlite 대량 내보내기",
+  "author": { "name": "Yeondong Yang", "url": "https://github.com/rubato103/scienceon-mcp" },
+  "homepage": "https://github.com/rubato103/scienceon-mcp",
+  "documentation": "https://github.com/rubato103/scienceon-mcp#readme",
+  "license": "MIT",
+  "keywords": ["scienceon", "kisti", "openapi", "academic", "literature", "metadata"],
+  "server": {
+    "type": "binary",
+    "entry_point": "uvx",
+    "mcp_config": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/rubato103/scienceon-mcp", "scienceon-mcp"],
+      "env": {
+        "SCIENCEON_AUTH_KEY": "${user_config.auth_key}",
+        "SCIENCEON_CLIENT_ID": "${user_config.client_id}",
+        "SCIENCEON_MAC_ADDRESS": "${user_config.mac_address}",
+        "SCIENCEON_ACCOUNT_ID": "${user_config.account_id}"
+      }
+    }
+  },
+  "user_config": {
+    "auth_key": {
+      "type": "string",
+      "title": "인증키 (32자)",
+      "description": "ScienceOn API Gateway 인증키",
+      "sensitive": true,
+      "required": true
+    },
+    "client_id": {
+      "type": "string",
+      "title": "Client ID",
+      "description": "ScienceOn API Gateway client_id",
+      "sensitive": true,
+      "required": true
+    },
+    "mac_address": {
+      "type": "string",
+      "title": "신청 MAC 주소",
+      "description": "예: B0-A4-60-6D-EB-56 (IP관리에 등록한 대표 MAC)",
+      "required": true
+    },
+    "account_id": {
+      "type": "string",
+      "title": "신청자 아이디 (선택)",
+      "description": "참고용 계정 식별자",
+      "required": false,
+      "default": ""
+    }
+  },
+  "tools": [
+    { "name": "scienceon_status", "description": "연결/토큰 상태 점검 (+공인 IP)" },
+    { "name": "scienceon_search", "description": "문헌 검색 — 다중쿼리·와일드카드·contains·lang·연도범위" },
+    { "name": "scienceon_detail", "description": "제어번호(CN)로 상세·초록 조회" },
+    { "name": "scienceon_export", "description": "대량 수집 후 xlsx/csv/json/sqlite 저장" }
+  ],
+  "compatibility": {
+    "platforms": ["win32", "darwin", "linux"],
+    "runtimes": { "python": ">=3.10" }
+  }
+}
