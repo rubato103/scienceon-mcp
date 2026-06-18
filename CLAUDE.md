@@ -55,5 +55,8 @@ reference/      # KISTI 매뉴얼·공식 샘플(gitignore, 비공개)
 - 라이브 검증 우선(추정 금지) — 대량 호출 전 소량 시범.
 
 ## 7. 상태
-- ✅ 토큰 발급·검색 라이브 검증 / 코어·MCP·CLI 구현 / 4종 익스포터
-- ⏳ 라이브 수집 최종 검증 → git init·커밋 → (확인 후) GitHub 공개 푸시
+- ✅ 공개: github.com/rubato103/scienceon-mcp (MIT, Release v0.1.0 + `.mcpb` 원클릭)
+- ✅ 라이브 검증: 토큰·검색·다중쿼리·와일드카드(`*`)·contains/lang 필터·다중그룹·다중 target(ARTI+REPORT)
+- ✅ 배포 3종: uvx-from-git / `.mcpb`(Claude Desktop) / 로컬(개발). 자격증명은 사용자 환경변수+.env.
+- ✅ pytest 11종 + GitHub Actions CI
+- ⏳ (선택) `.mcpb` 데스크톱 실설치 검증, ROADMAP(docs/ROADMAP.md) P0~P3

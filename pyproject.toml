@@ -39,5 +39,8 @@ Homepage = "https://github.com/rubato103/scienceon-mcp"
 Repository = "https://github.com/rubato103/scienceon-mcp"
 Issues = "https://github.com/rubato103/scienceon-mcp/issues"
 
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/scienceon_mcp"]

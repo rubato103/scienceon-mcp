@@ -1,5 +1,7 @@
 # scienceon-mcp
 
+[![CI](https://github.com/rubato103/scienceon-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/rubato103/scienceon-mcp/actions/workflows/ci.yml)
+
 KISTI **ScienceOn OpenAPI** 문헌 검색·메타데이터 수집기 — **MCP 서버 + CLI**.
 자기 ScienceOn API 키만 발급받으면 누구나 Claude(또는 CLI)에서 국내외 논문·보고서
 서지 메타데이터를 검색·수집할 수 있습니다.
