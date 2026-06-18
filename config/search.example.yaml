@@ -2,7 +2,7 @@
 #   uv run scienceon collect --config config/<프로젝트명>.yaml
 
 project: borderline
-target: ARTI                  # ARTI(논문) | REPORT(보고서) | ATT(동향) | RESEARCHER | ORGAN
+targets: [ARTI, REPORT]       # 다중 target 합집합(논문+보고서). 단일이면 target: ARTI
 year: "2005~2025"             # 발행연도/범위(틸드 ~). 비우면 전체
 
 # ── 검색 방식 3가지 (택1) ─────────────────────────────────────────

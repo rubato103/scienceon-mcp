@@ -60,6 +60,17 @@ def cmd_detail(args) -> int:
     return 0
 
 
+def _collect_target(client: ScienceOnClient, target: str, cfg: dict, common: dict):
+    """단일 target 수집 — searches(다중그룹) 우선, 없으면 terms/query."""
+    if cfg.get("searches"):
+        return client.search_groups(target, cfg["searches"], **common)
+    terms = cfg.get("terms") or ([cfg["query"]] if cfg.get("query") else [])
+    if not terms:
+        raise ValueError("config 에 searches / terms / query 중 하나가 필요합니다.")
+    return client.search_terms(target, terms, field=cfg.get("field", "BI"),
+                               contains=cfg.get("contains"), **common)
+
+
 def cmd_collect(args) -> int:
     import yaml
     from .exporters import export
@@ -70,24 +81,27 @@ def cmd_collect(args) -> int:
     common = dict(year=year, max_records=int(cfg.get("max_records", 2000)),
                   rows=int(cfg.get("rows_per_page", 100)), sort_field=sort.get("field", ""))
     client = ScienceOnClient(throttle=float(cfg.get("throttle_sec", 0.5)))
+    targets = cfg.get("targets") or [cfg.get("target", "ARTI")]
     try:
-        if cfg.get("searches"):  # 다중 그룹(필드별 용어묶음 + 그룹별 contains)
-            recs = client.search_groups(cfg["target"], cfg["searches"], **common)
-        else:
-            terms = cfg.get("terms") or ([cfg["query"]] if cfg.get("query") else [])
-            if not terms:
-                print("오류: config 에 searches / terms / query 중 하나가 필요합니다.")
-                return 1
-            recs = client.search_terms(cfg["target"], terms, field=cfg.get("field", "BI"),
-                                       contains=cfg.get("contains"), **common)
-    except ScienceOnError as e:
+        recs: list = []
+        seen: set = set()
+        for tgt in targets:  # 다중 target(예: ARTI+REPORT) → CN 합집합
+            for r in _collect_target(client, tgt, cfg, common):
+                key = r.control_no or (r.title, r.pub_year)
+                if key in seen:
+                    continue
+                seen.add(key)
+                recs.append(r)
+    except (ScienceOnError, ValueError) as e:
         print("오류:", e)
         return 1
     out = cfg.get("output", {})
     project = cfg.get("project", "collect")
     paths = export(recs, out.get("formats", ["xlsx", "csv", "json"]),
                    out.get("dir", f"output/{project}"), project)
-    print(f"수집 {len(recs)}건 저장:")
+    from collections import Counter
+    bysrc = Counter(r.source for r in recs)
+    print(f"수집 {len(recs)}건 (target {','.join(targets)} → {dict(bysrc)}) 저장:")
     for p in paths:
         print("  -", p)
     return 0
